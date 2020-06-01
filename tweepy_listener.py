@@ -1,4 +1,5 @@
 import boto3
+import tweepy
 
 class ACNHStreamListener(tweepy.StreamListener):
 
