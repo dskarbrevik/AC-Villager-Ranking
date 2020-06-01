@@ -10,7 +10,7 @@ if __name__=='__main__':
     with open('./config.json','rb') as file:
         config = json.load(file)
 
-    with open(config['twiter_terms_path'],'r') as file2:
+    with open(config['twitter_terms_path'],'r') as file2:
         lines = file.readlines()
     terms = []
     for line in lines:
