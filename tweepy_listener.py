@@ -1,5 +1,4 @@
 import boto3
-import json
 
 class ACNHStreamListener(tweepy.StreamListener):
 
