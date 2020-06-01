@@ -11,7 +11,7 @@ if __name__=='__main__':
         config = json.load(file)
 
     with open(config['twitter_terms_path'],'r') as file2:
-        lines = file.readlines()
+        lines = file2.readlines()
     terms = []
     for line in lines:
         terms.append(line.strip())
