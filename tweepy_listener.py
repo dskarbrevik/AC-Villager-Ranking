@@ -11,11 +11,12 @@ class ACNHStreamListener(tweepy.StreamListener):
         self.file_size = file_cutoff_size*1000000
         self.s3 = boto3.client('s3')
         self.s3_bucket = s3_bucket
-
-
+        if not os.path.exists("./tweet_files"):
+            os.mkdir("./tweet_files")
+            
     def new_paths(self):
         file_name = "{0}.txt".format(str(round(time.time(),2)).replace(".",""))
-        file_path = "./test_files/{0}".format(file_name)
+        file_path = "./tweet_files/{0}".format(file_name)
         return file_name, file_path
 
     def too_big(self):
