@@ -1,24 +1,42 @@
 import boto3
 import tweepy
-import decimal
-import json
+import os
 
 class ACNHStreamListener(tweepy.StreamListener):
 
-    def __init__(self, dynamo_table):
+    def __init__(self, s3_bucket, file_cutoff_size=10):
         super(ACNHStreamListener, self).__init__()
-        self.tweets = []
-        self.dynamo = boto3.resource('dynamodb', region_name='us-east-1')
-        self.table = self.dynamo.Table(dynamo_table)
+        self.current_file_name, self.current_path = self.new_paths()
+        self.file_size = file_cutoff_size*1000000
+        self.s3 = boto3.client('s3')
+        self.s3_bucket = s3_bucket
 
-    def convert_float(num):
-        return decimal.Decimal(str(round(float(num), 2)))
+
+    def new_paths(self):
+        file_name = "{0}.txt".format(str(round(time.time(),2)).replace(".",""))
+        file_path = "./test_files/{0}".format(file_name)
+        return file_name, file_path
+
+    def too_big(self):
+        size = os.path.getsize(self.current_path)
+        if size >= self.file_size:
+            return True
+        else:
+            return False
+
+    def save_to_s3(self):
+        self.s3.upload_file(self.current_path, self.s3_bucket, self.current_file_name)
 
     def on_status(self, status):
         try:
-            item = status.__dict__['_json']
-            json_dump = json.dumps(item)
-            json_item = json.loads(json_dump, parse_float=self.convert_float)
-            self.table.put_item(Item=json_item)
+            tweet = str(status.__dict__['_json'])
+            with open(self.current_path,'a') as file:
+                file.write(tweet)
+                file.write("\n<SEP>\n")
+            if self.too_big():
+                self.save_to_s3()
+                self.current_file_name, self.current_path = self.new_paths()
+
+
         except Exception as e:
             print(e)

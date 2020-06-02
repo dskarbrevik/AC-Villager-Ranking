@@ -29,6 +29,6 @@ if __name__=='__main__':
 
     print(f"Starting Twitter stream to track the following terms: {terms}")
 
-    stream_listener = ACNHStreamListener(dynamo_table=config['dynamo_table'])
+    stream_listener = ACNHStreamListener(s3_bucket=config['s3_bucket'], file_cutoff_size=config['file_size'])
     stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
     stream.filter(track=terms)
