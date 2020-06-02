@@ -13,7 +13,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         self.s3_bucket = s3_bucket
         if not os.path.exists("./tweet_files"):
             os.mkdir("./tweet_files")
-            
+
     def new_paths(self):
         file_name = "{0}.txt".format(str(round(time.time(),2)).replace(".",""))
         file_path = "./tweet_files/{0}".format(file_name)
@@ -37,6 +37,7 @@ class ACNHStreamListener(tweepy.StreamListener):
                 file.write("\n<SEP>\n")
             if self.too_big():
                 self.save_to_s3()
+                os.remove(self.current_path)
                 self.current_file_name, self.current_path = self.new_paths()
 
 
