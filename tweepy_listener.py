@@ -61,13 +61,12 @@ class ACNHStreamListener(tweepy.StreamListener):
 
     def get_villager_data(self, tweet):
 
-        tokens = tweet['text'].lower().split()
+        tweet = tweet['text'].lower()
         animals = []
         sentiment = ""
-        for token in tokens:
-            for villager in self.villagers:
-                if token == villager.lower():
-                    animals.append(villager)
+        for villager in self.villagers:
+            if villager.lower() in tweet:
+                animals.append(villager)
         if animals:
             sentiment_score = TextBlob(tweet['text']).sentiment.polarity
             if sentiment_score >= 0:
