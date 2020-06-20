@@ -57,7 +57,7 @@ class ACNHStreamListener(tweepy.StreamListener):
     #     self.s3.upload_file(self.current_path, self.s3_bucket, self.current_file_name)
 
 
-    def get_villager_data(tweet):
+    def get_villager_data(self, tweet):
 
         tokens = tweet['text'].lower().split()
         animals = []
