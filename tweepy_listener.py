@@ -79,12 +79,13 @@ class ACNHStreamListener(tweepy.StreamListener):
 
     def update_dynamo(self, animal, sentiment):
         Key={'villager_name':animal}
-        UpdateExpression="set pos_total = post_total + :increment, " + \
+        UpdateExpression="set pos_total = pos_total + :increment, " + \
                          "neg_total = neg_total + :increment"
 
         ExpressionAttributeValues={
             ':increment': 1
-        },
+        }
+
         self.table.update_item(Key=Key,
                                UpdateExpression=UpdateExpression,
                                ExpressionAttributeValues=ExpressionAttributeValues)
