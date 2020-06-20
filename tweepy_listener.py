@@ -76,7 +76,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         return animals,sentiment
 
     def update_dynamo(self, animal, sentiment):
-        Key={'villager_name'=animal}
+        Key={'villager_name':animal}
         UpdateExpression="set pos_total = post_total + :increment, " + \
                          "neg_total = neg_total + :increment"
 
