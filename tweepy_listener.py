@@ -18,6 +18,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         #     os.mkdir("./tweet_files")
         self.dynamo = boto3.resource('dynamodb', region_name='us-east-1')
         self.table = self.dynamo.Table(dynamo_table_name)
+        print(self.table)
         self.villagers = villager_data
 
     def parse_tweet(self, tweet):
