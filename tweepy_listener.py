@@ -73,7 +73,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             elif sentiment_score < 0:
                 sentiment = "negative"
 
-        return animals,sentiment
+        return (animals,sentiment)
 
     def update_dynamo(self, animal, sentiment):
         Key={'villager_name':animal}
@@ -91,11 +91,11 @@ class ACNHStreamListener(tweepy.StreamListener):
         try:
             tweet = self.parse_tweet(status.__dict__['_json'])
 
-            animals, sentiment = self.get_villager_data(tweet)
+            data = self.get_villager_data(tweet)
 
-            if animals:
-                for animal in animals:
-                    self.update_dynamo(animal, sentiment)
+            if data[0]:
+                for animal in data[0]:
+                    self.update_dynamo(animal, data[1])
 
         except Exception as e:
             print(e)
