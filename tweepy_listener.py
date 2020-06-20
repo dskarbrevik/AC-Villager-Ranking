@@ -78,12 +78,23 @@ class ACNHStreamListener(tweepy.StreamListener):
         return (animals,sentiment)
 
     def update_dynamo(self, animal, sentiment):
+
+        if sentiment=="positive":
+            pos_counter = 1
+            neg_counter = 0
+        elif sentiment=="negative":
+            pos_counter = 0
+            neg_counter = 1
+        else:
+            raise Exception("sentiment not negative or positive... can't update dynamodb.")
+
         Key={'villager_name':animal}
-        UpdateExpression="set pos_total = pos_total + :increment, " + \
-                         "neg_total = neg_total + :increment"
+        UpdateExpression="set pos_total = pos_total + :pos_increment, " + \
+                         "neg_total = neg_total + :neg_increment"
 
         ExpressionAttributeValues={
-            ':increment': 1
+            ':pos_increment': pos_counter,
+            ':neg_increment':neg_counter
         }
 
         self.table.update_item(Key=Key,
