@@ -16,6 +16,13 @@ if __name__=='__main__':
     for line in lines:
         terms.append(line.strip())
 
+    with open(config['acnh_animals_path'],'r') as file3:
+        lines = file3.readlines()
+        villager_data = []
+        for line in lines:
+            villager_data.append(line.strip())
+
+
     consumer_key = config['twitter_credentials']['consumer_key']
     consumer_secret = config['twitter_credentials']['consumer_secret']
     access_token = config['twitter_credentials']['access_token']
@@ -29,6 +36,6 @@ if __name__=='__main__':
 
     print(f"Starting Twitter stream to track the following terms: {terms}")
 
-    stream_listener = ACNHStreamListener(s3_bucket=config['s3_bucket'], file_cutoff_size=config['file_size'])
+    stream_listener = ACNHStreamListener(villager_data=villager_data, dynamo_table_name=config['dynamo_table_name'])
     stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
     stream.filter(track=terms)
