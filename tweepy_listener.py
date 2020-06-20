@@ -4,6 +4,7 @@ import os
 import time
 from textblob import TextBlob
 from decimal import Decimal
+import traceback
 
 class ACNHStreamListener(tweepy.StreamListener):
 
@@ -98,4 +99,4 @@ class ACNHStreamListener(tweepy.StreamListener):
                     self.update_dynamo(animal, data[1])
 
         except Exception as e:
-            print(e)
+            print(traceback.print_exc())
