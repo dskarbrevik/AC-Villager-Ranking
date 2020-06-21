@@ -101,9 +101,9 @@ class ACNHStreamListener(tweepy.StreamListener):
         try:
             Key={'villager_name':animal}
             UpdateExpression=f"set {pos_attr} = {pos_attr} + :pos_increment, " + \
-                             f"{neg_attr} = {neg_attr} + :neg_increment, " + \
-                             f"pos_total = pos_total + :pos_increment, " + \
-                             f"neg_total = neg_total + :neg_increment"
+                            f"{neg_attr} = {neg_attr} + :neg_increment, " + \
+                            f"pos_total = pos_total + :pos_increment, " + \
+                            f"neg_total = neg_total + :neg_increment"
 
             ExpressionAttributeValues={
                 ':pos_increment': pos_counter,
@@ -119,7 +119,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             # if we don't pass ConditionExpression we need to initialize the attributes
             Key={'villager_name':animal}
             UpdateExpression=f"set {pos_attr} = :pos_increment, " + \
-                             f"{neg_attr} = :neg_increment, "
+                             f"{neg_attr} = :neg_increment, " + \
                              f"pos_total = pos_total + :pos_increment, " + \
                              f"neg_total = neg_total + :neg_increment"
 
