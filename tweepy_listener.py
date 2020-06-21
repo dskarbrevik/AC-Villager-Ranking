@@ -27,7 +27,6 @@ class ACNHStreamListener(tweepy.StreamListener):
         self.sysinfo_table = self.dynamo.Table(dynamo_sysinfo_table)
         if dynamo_tweet_table:
             self.tweet_table = self.dynamo.Table(dynamo_tweet_table)
-        print(self.table)
         self.villagers = villager_data
         self.last_updated_sysinfo = datetime.now()
         self.update_sysinfo = False
