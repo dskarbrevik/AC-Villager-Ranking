@@ -1,9 +1,12 @@
 import boto3
+from boto3.dynamodb.conditions import Attr,Key
+from botocore.exceptions import ClientError
 import tweepy
 import os
 import time
 from textblob import TextBlob
 from decimal import Decimal
+from datetime import date
 import traceback
 
 class ACNHStreamListener(tweepy.StreamListener):
@@ -20,6 +23,12 @@ class ACNHStreamListener(tweepy.StreamListener):
         self.table = self.dynamo.Table(dynamo_table_name)
         print(self.table)
         self.villagers = villager_data
+
+    def get_attrs(self):
+        today = date.today()
+        pos_attr = f"pos_{today.strftime('%m_%d_%Y')}"
+        neg_attr = f"neg_{today.strftime('%m_%d_%Y')}"
+        return pos_attr, neg_attr
 
     def parse_tweet(self, tweet):
 
@@ -87,18 +96,44 @@ class ACNHStreamListener(tweepy.StreamListener):
         else:
             raise Exception("sentiment not negative or positive... can't update dynamodb.")
 
-        Key={'villager_name':animal}
-        UpdateExpression="set pos_total = pos_total + :pos_increment, " + \
-                         "neg_total = neg_total + :neg_increment"
+        pos_attr, neg_attr = self.get_attrs()
 
-        ExpressionAttributeValues={
-            ':pos_increment': pos_counter,
-            ':neg_increment':neg_counter
-        }
+        try:
+            Key={'villager_name':animal}
+            UpdateExpression=f"set {pos_attr} = {pos_attr} + :pos_increment, " + \
+                             f"{neg_attr} = {neg_attr} + :neg_increment, " + \
+                             f"pos_total = pos_total + :pos_increment, " + \
+                             f"neg_total = neg_total + :neg_increment"
 
-        self.table.update_item(Key=Key,
-                               UpdateExpression=UpdateExpression,
-                               ExpressionAttributeValues=ExpressionAttributeValues)
+            ExpressionAttributeValues={
+                ':pos_increment': pos_counter,
+                ':neg_increment': neg_counter
+            }
+
+            table.update_item(Key=Key,
+                              UpdateExpression=UpdateExpression,
+                              ExpressionAttributeValues=ExpressionAttributeValues,
+                              ConditionExpression=Attr(pos_attr).exists() & Attr(neg_attr).exists())
+
+        except ClientError as e:
+            # if we don't pass ConditionExpression we need to initialize the attributes
+            Key={'villager_name':animal}
+            UpdateExpression=f"set {pos_attr} = :pos_increment, " + \
+                             f"{neg_attr} = :neg_increment, "
+                             f"pos_total = pos_total + :pos_increment, " + \
+                             f"neg_total = neg_total + :neg_increment"
+
+            ExpressionAttributeValues={
+                ':pos_increment': pos_counter,
+                ':neg_increment': neg_counter
+            }
+
+            table.update_item(Key=Key,
+                              UpdateExpression=UpdateExpression,
+                              ExpressionAttributeValues=ExpressionAttributeValues)
+
+            if e.response['Error']['Code'] != 'ConditionalCheckFailedException':
+                raise
 
     def on_status(self, status):
         try:
