@@ -36,6 +36,9 @@ if __name__=='__main__':
 
     print(f"Starting Twitter stream to track the following terms: {terms}")
 
-    stream_listener = ACNHStreamListener(villager_data=villager_data, dynamo_table_name=config['dynamo_table_name'])
+    stream_listener = ACNHStreamListener(villager_data=villager_data,
+                                         dynamo_villager_table=config['dynamo_villager_table'],
+                                         dynamo_sysinfo_table=config['dynamo_sysinfo_table'],
+                                         dynamo_tweet_table=config['dynamo_tweet_table'])
     stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
     stream.filter(track=terms)

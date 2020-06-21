@@ -12,7 +12,9 @@ import traceback
 class ACNHStreamListener(tweepy.StreamListener):
 
     def __init__(self, villager_data,
-                dynamo_villager_table, dynamo_sysinfo_table, dynamo_tweet_table=None):
+                 dynamo_villager_table,
+                 dynamo_sysinfo_table,
+                 dynamo_tweet_table=None):
         super(ACNHStreamListener, self).__init__()
         # self.current_file_name, self.current_path = self.new_paths()
         # self.file_size = file_cutoff_size*1000000
