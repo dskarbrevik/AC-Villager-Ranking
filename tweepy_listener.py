@@ -110,7 +110,7 @@ class ACNHStreamListener(tweepy.StreamListener):
                 ':neg_increment': neg_counter
             }
 
-            table.update_item(Key=Key,
+            self.table.update_item(Key=Key,
                               UpdateExpression=UpdateExpression,
                               ExpressionAttributeValues=ExpressionAttributeValues,
                               ConditionExpression=Attr(pos_attr).exists() & Attr(neg_attr).exists())
@@ -128,7 +128,7 @@ class ACNHStreamListener(tweepy.StreamListener):
                 ':neg_increment': neg_counter
             }
 
-            table.update_item(Key=Key,
+            self.table.update_item(Key=Key,
                               UpdateExpression=UpdateExpression,
                               ExpressionAttributeValues=ExpressionAttributeValues)
 
