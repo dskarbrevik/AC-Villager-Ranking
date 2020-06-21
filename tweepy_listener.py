@@ -11,7 +11,8 @@ import traceback
 
 class ACNHStreamListener(tweepy.StreamListener):
 
-    def __init__(self, villager_data, dynamo_table_name):
+    def __init__(self, villager_data,
+                dynamo_villager_table, dynamo_sysinfo_table, dynamo_tweet_table=None):
         super(ACNHStreamListener, self).__init__()
         # self.current_file_name, self.current_path = self.new_paths()
         # self.file_size = file_cutoff_size*1000000
@@ -20,9 +21,15 @@ class ACNHStreamListener(tweepy.StreamListener):
         # if not os.path.exists("./tweet_files"):
         #     os.mkdir("./tweet_files")
         self.dynamo = boto3.resource('dynamodb', region_name='us-east-1')
-        self.table = self.dynamo.Table(dynamo_table_name)
+        self.villager_table = self.dynamo.Table(dynamo_villager_table)
+        self.sysinfo_table = self.dynamo.Table(dynamo_sysinfo_table)
+        if dynamo_tweet_table:
+            self.tweet_table = dynamo.Table(dynamo_tweet_table)
         print(self.table)
         self.villagers = villager_data
+        self.last_updated_sysinfo = datetime.now()
+        self.update_sysinfo = False
+
 
     def get_attrs(self):
         today = date.today()
@@ -93,25 +100,39 @@ class ACNHStreamListener(tweepy.StreamListener):
 
         if animals:
             sentiment_score = TextBlob(tweet).sentiment.polarity
-            if sentiment_score >= 0:
-                sentiment = "positive"
-            elif sentiment_score < 0:
-                sentiment = "negative"
 
-        return (animals,sentiment)
+        return (animals,sentiment_score)
 
-    def update_dynamo(self, animal, sentiment):
+    def update_dynamo(self, animal, sentiment, tweet=None, sysinfo=False):
 
-        if sentiment=="positive":
+        if sentiment>=0:
             pos_counter = 1
             neg_counter = 0
-        elif sentiment=="negative":
+        elif sentiment<0:
             pos_counter = 0
             neg_counter = 1
         else:
             raise Exception("sentiment not negative or positive... can't update dynamodb.")
 
         pos_attr, neg_attr = self.get_attrs()
+
+        # put high sentiment tweets in dynamo
+        try:
+            if sentiment>=0.9 or sentiment=<-0.9:
+                if tweet:
+                    self.tweet_table.put_item(Item=tweet)
+        except Exception as e:
+            pass
+
+        # update sysinfo if needed
+        try:
+            if sysinfo:
+                update_time = datetime.now().strftime('%m_%d_%Y_%H_%M_%S')
+                item = {'name':'last_updated_acnh_rank','sysinfo_value':update_time}
+                self.sys_info_table.put_item(Item=item)
+                self.update_sysinfo = False
+        except Exception as e:
+            pass
 
         try:
             Key={'villager_name':animal}
@@ -125,7 +146,7 @@ class ACNHStreamListener(tweepy.StreamListener):
                 ':neg_increment': neg_counter
             }
 
-            self.table.update_item(Key=Key,
+            self.villager_table.update_item(Key=Key,
                               UpdateExpression=UpdateExpression,
                               ExpressionAttributeValues=ExpressionAttributeValues,
                               ConditionExpression=Attr(pos_attr).exists() & Attr(neg_attr).exists())
@@ -143,7 +164,7 @@ class ACNHStreamListener(tweepy.StreamListener):
                 ':neg_increment': neg_counter
             }
 
-            self.table.update_item(Key=Key,
+            self.villager_table.update_item(Key=Key,
                               UpdateExpression=UpdateExpression,
                               ExpressionAttributeValues=ExpressionAttributeValues)
 
@@ -156,9 +177,14 @@ class ACNHStreamListener(tweepy.StreamListener):
 
             data = self.get_villager_data(tweet)
 
+            # only update every 10 minutes just as a sanity check
+            if datetime.now() > (self.last_updated_sysinfo + timedelta(0,10*60)):
+                self.last_updated_sysinfo = datetime.now()
+                self.update_sysinfo = True
+
             if data[0]:
                 for animal in data[0]:
-                    self.update_dynamo(animal, data[1])
+                    self.update_dynamo(animal, data[1], tweet, sysinfo=self.update_sysinfo)
 
         except Exception as e:
             print(traceback.print_exc())
