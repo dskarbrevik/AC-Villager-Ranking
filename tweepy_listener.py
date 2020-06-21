@@ -120,7 +120,7 @@ class ACNHStreamListener(tweepy.StreamListener):
 
         # put high sentiment tweets in dynamo
         try:
-            if sentiment>=0.9 or sentiment=<-0.9:
+            if sentiment>=0.9 or sentiment<=-0.9:
                 if tweet:
                     self.tweet_table.put_item(Item=tweet)
         except Exception as e:
