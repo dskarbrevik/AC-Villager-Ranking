@@ -77,7 +77,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             if villager.lower() in tweet:
                 animals.append(villager)
         if animals:
-            sentiment_score = TextBlob(tweet['text']).sentiment.polarity
+            sentiment_score = TextBlob(tweet).sentiment.polarity
             if sentiment_score >= 0:
                 sentiment = "positive"
             elif sentiment_score < 0:
