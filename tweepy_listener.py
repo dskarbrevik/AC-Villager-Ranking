@@ -81,7 +81,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         tweet = tweet['text'].lower()
         tweet = tweet.strip(" ").strip("\n").strip(".")
         animals = []
-        sentiment = ""
+        sentiment_score = 0
 
         tokens = tweet.split()
 
