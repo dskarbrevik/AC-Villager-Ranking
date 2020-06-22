@@ -212,6 +212,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             self.retry_connect = 0
         except Exception as e:
             print(traceback.print_exc())
+            sys.exit()
 
     def on_error(self, status_code):
         if status_code == 420 or status_code==429:
