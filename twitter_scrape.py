@@ -31,7 +31,7 @@ if __name__=='__main__':
     access_token_secret = config['twitter_credentials']['access_token_secret']
 
     sns = boto3.resource(service_name='sns',region_name='us-east-1')
-    topic = sns.Topic(config['sns_erro_topic'])
+    topic = sns.Topic(config['sns_error_topic'])
     # setup twitter stream
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
