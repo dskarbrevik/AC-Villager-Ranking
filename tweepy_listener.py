@@ -9,13 +9,15 @@ from textblob import TextBlob
 from decimal import Decimal
 from datetime import date,datetime,timedelta
 import traceback
+import cld3
 
 class ACNHStreamListener(tweepy.StreamListener):
 
     def __init__(self, villager_data,
                  dynamo_villager_table,
                  dynamo_sysinfo_table,
-                 dynamo_tweet_table=None):
+                 dynamo_tweet_table=None,
+                 sns_error_topic=None):
         super(ACNHStreamListener, self).__init__()
         # self.current_file_name, self.current_path = self.new_paths()
         # self.file_size = file_cutoff_size*1000000
@@ -24,7 +26,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         # if not os.path.exists("./tweet_files"):
         #     os.mkdir("./tweet_files")
         self.sns = boto3.resource('sns', region_name='us-east-1')
-        self.topic = self.sns.Topic('arn:aws:sns:us-east-1:110753704459:acnh-error')
+        self.topic = self.sns.Topic(sns_error_topic)
 
         self.dynamo = boto3.resource('dynamodb', region_name='us-east-1')
         self.villager_table = self.dynamo.Table(dynamo_villager_table)
@@ -90,7 +92,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         animals = []
         text_blob = TextBlob(tweet['text'])
         sentiment_score = text_blob.sentiment.polarity
-        language = text_blob.detect_language()
+        language = cld3.get_language(tweet['text']).language
 
         if language=="en":
 
@@ -212,14 +214,13 @@ class ACNHStreamListener(tweepy.StreamListener):
             self.retry_connect = 0
         except Exception as e:
             print(traceback.print_exc())
-            sys.exit()
 
     def on_error(self, status_code):
         if status_code == 420 or status_code==429:
             #returning False in on_error disconnects the stream
             self.retry_connect += 1
             if self.retry_connect > 3:
-                self.topic.publish(message=f"Had to retry 3 times\nStatus code = {status_code}\nTime = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
+                self.topic.publish(message=f"Had to retry 3 times\nStatus code = {status_code}\nScraper shutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
                 sys.exit()
             print(f"Hit https error, retry number at {self.retry_connect}")
             time.sleep(30*(2**self.retry_connect))
