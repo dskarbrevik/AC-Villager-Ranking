@@ -3,6 +3,7 @@ from boto3.dynamodb.conditions import Attr,Key
 from botocore.exceptions import ClientError
 import tweepy
 import os
+import sys
 import time
 from textblob import TextBlob
 from decimal import Decimal
@@ -22,14 +23,22 @@ class ACNHStreamListener(tweepy.StreamListener):
         # self.s3_bucket = s3_bucket
         # if not os.path.exists("./tweet_files"):
         #     os.mkdir("./tweet_files")
+        self.sns = boto3.resource('sns', region_name='us-east-1')
+        self.topic = self.sns.Topic('arn:aws:sns:us-east-1:110753704459:acnh-error')
+
         self.dynamo = boto3.resource('dynamodb', region_name='us-east-1')
         self.villager_table = self.dynamo.Table(dynamo_villager_table)
         self.sysinfo_table = self.dynamo.Table(dynamo_sysinfo_table)
         if dynamo_tweet_table:
             self.tweet_table = self.dynamo.Table(dynamo_tweet_table)
+
         self.villagers = villager_data
+        if "K.K. Slider" in self.villagers:
+            self.villagers += ['kk','k.k.','slider']
         self.last_updated_sysinfo = datetime.now()
         self.update_sysinfo = False
+
+        self.retry_connect = 0
 
 
     def get_attrs(self):
@@ -92,7 +101,10 @@ class ACNHStreamListener(tweepy.StreamListener):
             for token in tokens:
                 for char in self.villagers:
                     if token==char.lower():
-                        animals.append(char)
+                        if token in ['kk','k.k.','slider']:
+                            animals.append("K.K. Slider")
+                        else:
+                            animals.append(char)
 
             bigram_tokens = []
             for i in range(len(tokens)-1):
@@ -101,7 +113,10 @@ class ACNHStreamListener(tweepy.StreamListener):
             for token in bigram_tokens:
                 for char in self.villagers:
                     if token==char.lower():
-                        animals.append(char)
+                        if token in ['kk','k.k.','slider']:
+                            animals.append("K.K. Slider")
+                        else:
+                            animals.append(char)
 
             if animals:
                 sentiment_score = TextBlob(tweet).sentiment.polarity
@@ -126,6 +141,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         try:
             if sentiment>=0.9 or sentiment<=-0.9:
                 if tweet:
+                    tweet['sentiment_score'] = sentiment
                     self.tweet_table.put_item(Item=tweet)
         except Exception as e:
             pass
@@ -135,7 +151,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             if sysinfo:
                 update_time = datetime.now().strftime('%m_%d_%Y_%H_%M_%S')
                 item = {'name':'last_updated_acnh_rank','sysinfo_value':update_time}
-                self.sys_info_table.put_item(Item=item)
+                self.sysinfo_table.put_item(Item=item)
                 print("updated sysinfo")
                 self.update_sysinfo = False
         except Exception as e:
@@ -193,6 +209,19 @@ class ACNHStreamListener(tweepy.StreamListener):
             if data[0]:
                 for animal in data[0]:
                     self.update_dynamo(animal, data[1], tweet, sysinfo=self.update_sysinfo)
-
+            self.retry_connect = 0
         except Exception as e:
             print(traceback.print_exc())
+
+    def on_error(self, status_code):
+        if status_code == 420 or status_code==429:
+            #returning False in on_error disconnects the stream
+            self.retry_connect += 1
+            if self.retry_connect > 3:
+                self.topic.publish(message=f"Had to retry 3 times\nStatus code = {status_code}\nTime = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
+                sys.exit()
+            print(f"Hit https error, retry number at {self.retry_connect}")
+            time.sleep(30*(2**self.retry_connect))
+            return True
+
+        # returning non-False reconnects the stream, with backoff.
