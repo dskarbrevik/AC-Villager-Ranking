@@ -78,31 +78,36 @@ class ACNHStreamListener(tweepy.StreamListener):
 
     def get_villager_data(self, tweet):
 
-        tweet = tweet['text'].lower()
-        tweet = tweet.strip(" ").strip("\n").strip(".")
         animals = []
-        sentiment_score = 0
+        text_blob = TextBlob(tweet['text'])
+        sentiment_score = text_blob.sentiment.polarity
+        language = text_blob.detect_language()
 
-        tokens = tweet.split()
+        if language=="en":
 
-        for token in tokens:
-            for char in self.villagers:
-                if token==char.lower():
-                    animals.append(char)
+            tweet = tweet['text'].lower()
+            tweet = tweet.strip(" ").strip("\n").strip(".")
+            tokens = tweet.split()
 
-        bigram_tokens = []
-        for i in range(len(tokens)-1):
-            bigram_tokens.append(tokens[i]+" "+tokens[i+1])
+            for token in tokens:
+                for char in self.villagers:
+                    if token==char.lower():
+                        animals.append(char)
 
-        for token in bigram_tokens:
-            for char in self.villagers:
-                if token==char.lower():
-                    animals.append(char)
+            bigram_tokens = []
+            for i in range(len(tokens)-1):
+                bigram_tokens.append(tokens[i]+" "+tokens[i+1])
 
-        if animals:
-            sentiment_score = TextBlob(tweet).sentiment.polarity
+            for token in bigram_tokens:
+                for char in self.villagers:
+                    if token==char.lower():
+                        animals.append(char)
+
+            if animals:
+                sentiment_score = TextBlob(tweet).sentiment.polarity
 
         return (animals,sentiment_score)
+
 
     def update_dynamo(self, animal, sentiment, tweet=None, sysinfo=False):
 
@@ -131,6 +136,7 @@ class ACNHStreamListener(tweepy.StreamListener):
                 update_time = datetime.now().strftime('%m_%d_%Y_%H_%M_%S')
                 item = {'name':'last_updated_acnh_rank','sysinfo_value':update_time}
                 self.sys_info_table.put_item(Item=item)
+                print("updated sysinfo")
                 self.update_sysinfo = False
         except Exception as e:
             pass
@@ -179,9 +185,10 @@ class ACNHStreamListener(tweepy.StreamListener):
             data = self.get_villager_data(tweet)
 
             # only update every 10 minutes just as a sanity check
-            if datetime.now() > (self.last_updated_sysinfo + timedelta(0,10*60)):
+            if datetime.now() > self.last_updated_sysinfo + timedelta(0,10*60):
                 self.last_updated_sysinfo = datetime.now()
                 self.update_sysinfo = True
+                print("ready to update sysinfo")
 
             if data[0]:
                 for animal in data[0]:
