@@ -53,7 +53,7 @@ class ACNHStreamListener(tweepy.StreamListener):
 
         # only want English tweets that aren't re-tweets
         lang = tweet.get('lang', "nolang")
-        retweet = tweet.get('retweeted_status')
+        retweet = tweet.get('retweeted_status',None)
         if retweet:
             retweet = True
         else:
@@ -100,7 +100,7 @@ class ACNHStreamListener(tweepy.StreamListener):
 
         animals = []
         sentiment_score = 0
-        if tweet['retweeted']==False:
+        if tweet['retweet']==False:
             text_blob = TextBlob(tweet['text'])
             sentiment_score = text_blob.sentiment.polarity
             language = cld3.get_language(tweet['text']).language
