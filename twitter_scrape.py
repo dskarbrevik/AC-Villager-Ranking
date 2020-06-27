@@ -48,5 +48,5 @@ if __name__=='__main__':
         stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
         stream.filter(track=terms)
     except Exception as e:
-        topic.publish(message=f"Shutting down scraper.\nError = {e}\nShutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
+        topic.publish(Message=f"Shutting down scraper.\nError = {e}\nShutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
         sys.exit()

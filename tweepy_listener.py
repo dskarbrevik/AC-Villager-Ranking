@@ -40,7 +40,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         self.last_updated_sysinfo = datetime.now()
         self.update_sysinfo = False
 
-        self.retry_connect = 0
+        self.error_count = 0
 
 
     def get_attrs(self):
@@ -227,7 +227,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             print(traceback.print_exc())
             self.error_count += 1
             if self.error_count > 3:
-                self.topic.publish(message=f"Hit 3 errors in a row in on_status\nScraper shutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
+                self.topic.publish(Message=f"Hit 3 errors in a row in on_status\nScraper shutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
                 sys.exit()
 
     def on_error(self, status_code):
@@ -235,7 +235,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             #returning False in on_error disconnects the stream
             self.error_count += 1
             if self.error_count > 3:
-                self.topic.publish(message=f"Had to retry 3 times\nStatus code = {status_code}\nScraper shutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
+                self.topic.publish(Message=f"Had to retry 3 times\nStatus code = {status_code}\nScraper shutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
                 sys.exit()
             print(f"Hit https error, retry number at {self.retry_connect}")
             time.sleep(30*(2**self.retry_connect))
