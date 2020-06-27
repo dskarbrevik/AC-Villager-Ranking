@@ -51,6 +51,14 @@ class ACNHStreamListener(tweepy.StreamListener):
 
     def parse_tweet(self, tweet):
 
+        # only want English tweets that aren't re-tweets
+        lang = tweet.get('lang', "nolang")
+        retweet = tweet.get('retweeted_status')
+        if retweet:
+            retweet = True
+        else:
+            retweet = False
+
         keep = {}
         keep['created_at'] = tweet.get('created_at')
         keep['id_str'] = tweet.get('id_str')
@@ -59,15 +67,16 @@ class ACNHStreamListener(tweepy.StreamListener):
         keep['user_id'] = tweet.get('user', {}).get('id')
         keep['user_location'] =tweet.get('user', {}).get('location')
         keep['hashtags'] = tweet.get('entities',{}).get('hashtags')
-        keep['retweeted_long_text'] = tweet.get('retweeted_status',{}).get('extended_tweet',{}).get('full_text')
-        keep['retweeted_hashtags'] = tweet.get('retweeted_status',{}).get('entities',{}).get('hashtags')
-
-        if keep['retweeted_long_text']:
-            keep['text'] = keep['retweeted_long_text']
-            keep.pop('retweeted_long_text', None)
-        if keep['retweeted_hashtags']:
-            keep['hashtags'] == keep['retweeted_hashtags']
-            keep.pop('retweeted_hashtags', None)
+        # keep['retweeted_long_text'] = tweet.get('retweeted_status',{}).get('extended_tweet',{}).get('full_text')
+        # keep['retweeted_hashtags'] = tweet.get('retweeted_status',{}).get('entities',{}).get('hashtags')
+        keep['lang'] = tweet.get('lang')
+        keep['retweet'] = retweet
+        # if keep['retweeted_long_text']:
+        #     keep['text'] = keep['retweeted_long_text']
+        #     keep.pop('retweeted_long_text', None)
+        # if keep['retweeted_hashtags']:
+        #     keep['hashtags'] == keep['retweeted_hashtags']
+        #     keep.pop('retweeted_hashtags', None)
 
         return keep
 
@@ -90,38 +99,40 @@ class ACNHStreamListener(tweepy.StreamListener):
     def get_villager_data(self, tweet):
 
         animals = []
-        text_blob = TextBlob(tweet['text'])
-        sentiment_score = text_blob.sentiment.polarity
-        language = cld3.get_language(tweet['text']).language
+        sentiment_score = 0
+        if tweet['retweeted']==False:
+            text_blob = TextBlob(tweet['text'])
+            sentiment_score = text_blob.sentiment.polarity
+            language = cld3.get_language(tweet['text']).language
 
-        if language=="en":
+            if language=="en":
+                if tweet['lang']=='en' or tweet['lang']=='und' or tweet['lang']==None:
+                    tweet = tweet['text'].lower()
+                    tweet = tweet.strip(" ").strip("\n").strip(".")
+                    tokens = tweet.split()
 
-            tweet = tweet['text'].lower()
-            tweet = tweet.strip(" ").strip("\n").strip(".")
-            tokens = tweet.split()
+                    for token in tokens:
+                        for char in self.villagers:
+                            if token==char.lower():
+                                if token in ['kk','k.k.','slider']:
+                                    animals.append("K.K. Slider")
+                                else:
+                                    animals.append(char)
 
-            for token in tokens:
-                for char in self.villagers:
-                    if token==char.lower():
-                        if token in ['kk','k.k.','slider']:
-                            animals.append("K.K. Slider")
-                        else:
-                            animals.append(char)
+                    bigram_tokens = []
+                    for i in range(len(tokens)-1):
+                        bigram_tokens.append(tokens[i]+" "+tokens[i+1])
 
-            bigram_tokens = []
-            for i in range(len(tokens)-1):
-                bigram_tokens.append(tokens[i]+" "+tokens[i+1])
+                    for token in bigram_tokens:
+                        for char in self.villagers:
+                            if token==char.lower():
+                                if token in ['kk','k.k.','slider']:
+                                    animals.append("K.K. Slider")
+                                else:
+                                    animals.append(char)
 
-            for token in bigram_tokens:
-                for char in self.villagers:
-                    if token==char.lower():
-                        if token in ['kk','k.k.','slider']:
-                            animals.append("K.K. Slider")
-                        else:
-                            animals.append(char)
-
-            if animals:
-                sentiment_score = TextBlob(tweet).sentiment.polarity
+                    if animals:
+                        sentiment_score = TextBlob(tweet).sentiment.polarity
 
         return (animals,sentiment_score)
 
@@ -141,7 +152,7 @@ class ACNHStreamListener(tweepy.StreamListener):
 
         # put high sentiment tweets in dynamo
         try:
-            if sentiment>=0.9 or sentiment<=-0.9:
+            if sentiment>=0.8 or sentiment<=-0.8:
                 if tweet:
                     tweet['sentiment_score'] = sentiment
                     self.tweet_table.put_item(Item=tweet)
@@ -211,15 +222,19 @@ class ACNHStreamListener(tweepy.StreamListener):
             if data[0]:
                 for animal in data[0]:
                     self.update_dynamo(animal, data[1], tweet, sysinfo=self.update_sysinfo)
-            self.retry_connect = 0
+            self.error_count = 0
         except Exception as e:
             print(traceback.print_exc())
+            self.error_count += 1
+            if self.error_count > 3:
+                self.topic.publish(message=f"Hit 3 errors in a row in on_status\nScraper shutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
+                sys.exit()
 
     def on_error(self, status_code):
         if status_code == 420 or status_code==429:
             #returning False in on_error disconnects the stream
-            self.retry_connect += 1
-            if self.retry_connect > 3:
+            self.error_count += 1
+            if self.error_count > 3:
                 self.topic.publish(message=f"Had to retry 3 times\nStatus code = {status_code}\nScraper shutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
                 sys.exit()
             print(f"Hit https error, retry number at {self.retry_connect}")
