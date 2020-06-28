@@ -214,7 +214,7 @@ class ACNHStreamListener(tweepy.StreamListener):
             data = self.get_villager_data(tweet)
 
             # only update every 10 minutes just as a sanity check
-            if datetime.now() > self.last_updated_sysinfo + timedelta(0,10*60):
+            if datetime.now() > self.last_updated_sysinfo + timedelta(minutes=10):
                 self.last_updated_sysinfo = datetime.now()
                 self.update_sysinfo = True
                 print("ready to update sysinfo")

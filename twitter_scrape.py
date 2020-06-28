@@ -3,7 +3,9 @@ import tweepy
 import json
 import os
 import boto3
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
+import traceback
 
 if __name__=='__main__':
 
@@ -38,15 +40,30 @@ if __name__=='__main__':
 
     api = tweepy.API(auth)
 
+    error_count = 0
+    last_error_time = datetime.now()
+    not_quit = True
+
     print(f"Starting Twitter stream to track the following terms: {terms}")
-    try:
-        stream_listener = ACNHStreamListener(villager_data=villager_data,
-                                             dynamo_villager_table=config['dynamo_villager_table'],
-                                             dynamo_sysinfo_table=config['dynamo_sysinfo_table'],
-                                             dynamo_tweet_table=config['dynamo_tweet_table'],
-                                             sns_error_topic=config['sns_error_topic'])
-        stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
-        stream.filter(track=terms)
-    except Exception as e:
-        topic.publish(Message=f"Shutting down scraper.\nError = {e}\nShutdown time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
-        sys.exit()
+    while not_quit:
+        try:
+            stream_listener = ACNHStreamListener(villager_data=villager_data,
+                                                 dynamo_villager_table=config['dynamo_villager_table'],
+                                                 dynamo_sysinfo_table=config['dynamo_sysinfo_table'],
+                                                 dynamo_tweet_table=config['dynamo_tweet_table'],
+                                                 sns_error_topic=config['sns_error_topic'])
+            stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
+            stream.filter(track=terms)
+        except Exception as e:
+            error_time = datetime.now()
+            diff = error_time - last_error_time
+            if diff < timedelta(minutes=5):
+                error_count+=1
+            else:
+                error_count=1
+            last_error_time = error_time
+            if error_count > 3:
+                topic.publish(Message=f"Hit error.\nError Count = {error_count}\nError = {traceback.print_exc()}\nError time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
+                sys.exit()
+            else:
+                time.sleep(60)
