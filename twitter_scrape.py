@@ -42,10 +42,9 @@ if __name__=='__main__':
 
     error_count = 0
     last_error_time = datetime.now()
-    not_quit = True
 
     print(f"Starting Twitter stream to track the following terms: {terms}")
-    while not_quit:
+    while True:
         try:
             stream_listener = ACNHStreamListener(villager_data=villager_data,
                                                  dynamo_villager_table=config['dynamo_villager_table'],
@@ -66,4 +65,6 @@ if __name__=='__main__':
                 topic.publish(Message=f"Hit error.\nError Count = {error_count}\nError = {traceback.print_exc()}\nError time = {datetime.now().strftime('%m/%d/%Y %H:%M:%S')}")
                 sys.exit()
             else:
+                print(e)
                 time.sleep(60)
+                print("\nRetrying Twitter stream connection...")
