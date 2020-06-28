@@ -157,7 +157,8 @@ class ACNHStreamListener(tweepy.StreamListener):
                     tweet['sentiment_score'] = sentiment
                     self.tweet_table.put_item(Item=tweet)
         except Exception as e:
-            pass
+            print(e)
+            print(traceback.print_exc())
 
         # update sysinfo if needed
         try:
