@@ -154,7 +154,7 @@ class ACNHStreamListener(tweepy.StreamListener):
         try:
             if sentiment>=0.8 or sentiment<=-0.8:
                 if tweet:
-                    tweet['sentiment_score'] = sentiment
+                    tweet['sentiment_score'] = Decimal(str(sentiment))
                     self.tweet_table.put_item(Item=tweet)
         except Exception as e:
             print(e)
